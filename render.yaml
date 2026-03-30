@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: loan-prediction-system
-    env: python
-    rootDir: Loan Prediction System
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
