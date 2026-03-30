@@ -5,9 +5,9 @@ from flask import Flask, request, render_template
 import pickle
 import numpy as np
 
-app = Flask(__name__, template_folder='.')
-BASE_DIR = Path(__file__).resolve().parent
-model = pickle.load(open(BASE_DIR / 'model.pkl', 'rb'))
+app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model = pickle.load(open(os.path.join(BASE_DIR, "model.pkl"), "rb"))
 
 @app.route('/')
 def home():
