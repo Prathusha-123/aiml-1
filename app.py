@@ -1,13 +1,12 @@
 import os
-from pathlib import Path
-
 from flask import Flask, request, render_template
 import pickle
 import numpy as np
 
 app = Flask(__name__)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-model = pickle.load(open(os.path.join(BASE_DIR, "model.pkl"), "rb"))
+
+# Load model
+model = pickle.load(open("model.pkl", "rb"))
 
 @app.route('/')
 def home():
@@ -16,10 +15,13 @@ def home():
 
 @app.route('/predict', methods=['GET', 'POST'])
 def predict():
-    if request.method ==  'POST':
+    if request.method == 'POST':
+
+        # Validation
         if request.form['credit'] == '-- select Credit_History --':
             return render_template("prediction.html", prediction_text="Please select a valid Credit History")
 
+        # Get inputs
         gender = request.form['gender']
         married = request.form['married']
         dependents = request.form['dependents']
@@ -32,87 +34,67 @@ def predict():
         LoanAmount = float(request.form['LoanAmount'])
         Loan_Amount_Term = float(request.form['Loan_Amount_Term'])
 
+        # Encoding
+
         # gender
-        if (gender == "Male"):
-            male=1
-        else:
-            male=0
-        
+        male = 1 if gender == "Male" else 0
+
         # married
-        if(married=="Yes"):
-            married_yes = 1
-        else:
-            married_yes=0
+        married_yes = 1 if married == "Yes" else 0
 
         # dependents
-        if(dependents=='1'):
-            dependents_1 = 1
-            dependents_2 = 0
-            dependents_3 = 0
-        elif(dependents == '2'):
-            dependents_1 = 0
-            dependents_2 = 1
-            dependents_3 = 0
-        elif(dependents=="3+"):
-            dependents_1 = 0
-            dependents_2 = 0
-            dependents_3 = 1
-        else:
-            dependents_1 = 0
-            dependents_2 = 0
-            dependents_3 = 0  
+        dependents_1 = 1 if dependents == '1' else 0
+        dependents_2 = 1 if dependents == '2' else 0
+        dependents_3 = 1 if dependents == '3+' else 0
 
         # education
-        if (education=="Not Graduate"):
-            not_graduate=1
-        else:
-            not_graduate=0
+        not_graduate = 1 if education == "Not Graduate" else 0
 
         # employed
-        if (employed == "Yes"):
-            employed_yes=1
-        else:
-            employed_yes=0
+        employed_yes = 1 if employed == "Yes" else 0
 
         # property area
+        semiurban = 1 if area == "Semiurban" else 0
+        urban = 1 if area == "Urban" else 0
 
-        if(area=="Semiurban"):
-            semiurban=1
-            urban=0
-        elif(area=="Urban"):
-            semiurban=0
-            urban=1
-        else:
-            semiurban=0
-            urban=0
-
-
+        # Log transformations
         ApplicantIncomelog = np.log(ApplicantIncome)
-        totalincomelog = np.log(ApplicantIncome+CoapplicantIncome)
+        totalincomelog = np.log(ApplicantIncome + CoapplicantIncome)
         LoanAmountlog = np.log(LoanAmount)
         Loan_Amount_Termlog = np.log(Loan_Amount_Term)
 
-        prediction = model.predict([[credit, ApplicantIncomelog,LoanAmountlog, Loan_Amount_Termlog, totalincomelog, male, married_yes, dependents_1, dependents_2, dependents_3, not_graduate, employed_yes,semiurban, urban ]])
+        # Prediction
+        prediction = model.predict([[
+            credit,
+            ApplicantIncomelog,
+            LoanAmountlog,
+            Loan_Amount_Termlog,
+            totalincomelog,
+            male,
+            married_yes,
+            dependents_1,
+            dependents_2,
+            dependents_3,
+            not_graduate,
+            employed_yes,
+            semiurban,
+            urban
+        ]])
 
-        # print(prediction)
+        # 🔥 FIX: extract value from array
+        prediction = prediction[0]
 
-        if(prediction=="N"):
-            prediction="Rejected"
+        # Convert result
+        if prediction == "N":
+            result = "Rejected"
         else:
-            prediction="Approved"
+            result = "Approved"
 
+        return render_template("prediction.html", prediction_text=f"Your loan is {result}")
 
-        return render_template("prediction.html", prediction_text="Your loan is {}".format(prediction))
-
-
-
-
-    else:
-        return render_template("prediction.html")
-
+    return render_template("prediction.html")
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 10000))
-    debug = os.getenv("FLASK_DEBUG", "False").lower() == "true"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
